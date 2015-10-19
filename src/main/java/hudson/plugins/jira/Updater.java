@@ -194,6 +194,8 @@ class Updater {
                 image = "RED.png";
             } else if ("OK".equals(JiraIssueWorkflowUpdater.status)){
                 image = "BLUE.png";
+            } else if ("RUNNING".equals(JiraIssueWorkflowUpdater.status)){
+                image = "GREY_ANIME.png";
             } else {
                 return "";
             }

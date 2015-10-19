@@ -189,23 +189,13 @@ class Updater {
     private static String createComment(Run<?, ?> build,
                                         boolean wikiStyle, String jenkinsRootUrl, boolean recordScmChanges, JiraIssue jiraIssue) {
         if (build instanceof WorkflowRun) {
-            String image;
-            if ("KO".equals(JiraIssueWorkflowUpdater.status)) {
-                image = "RED.png";
-            } else if ("OK".equals(JiraIssueWorkflowUpdater.status)){
-                image = "BLUE.png";
-            } else if ("RUNNING".equals(JiraIssueWorkflowUpdater.status)){
-                image = "GREY_ANIME.png";
-            } else {
-                return "";
-            }
             return format(
                     wikiStyle ?
                             "%6$s: Integrated in !%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
                             "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
                     jenkinsRootUrl,
                     build,
-                    image,
+                    BallColor.valueOf(JiraIssueWorkflowUpdater.status).getImage(),
                     Util.encode(jenkinsRootUrl + build.getUrl()),
                     getScmComments(wikiStyle, build, recordScmChanges, jiraIssue),
                     JiraIssueWorkflowUpdater.status);

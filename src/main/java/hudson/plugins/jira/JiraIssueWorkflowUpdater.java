@@ -41,7 +41,7 @@ public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildSte
         return BuildStepMonitor.BUILD;
     }
 
-    @Extension
+    @Extension(optional = true)
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
         @Override

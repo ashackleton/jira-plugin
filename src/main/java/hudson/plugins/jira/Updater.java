@@ -192,11 +192,11 @@ class Updater {
             String image = "";
             if ( "RUNNING".equals(JiraIssueWorkflowUpdater.status)) {
                 image = BallColor.GREY_ANIME.getImage();
-            } else if (Result.SUCCESS.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+            } else if ("OK".equals(JiraIssueWorkflowUpdater.status)) {
                 image = "(/)";
-            } else if (Result.FAILURE.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+            } else if ("KO".equals(JiraIssueWorkflowUpdater.status)) {
                 image = "(x)";
-            } else if (Result.UNSTABLE.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+            } else {
                 image = "(!)";
             }
             return format(
@@ -227,13 +227,21 @@ class Updater {
                                          Run build, boolean recordScmChanges, JiraIssue jiraIssue) {
         StringBuilder comment = new StringBuilder();
         RepositoryBrowser repoBrowser = getRepositoryBrowser(build);
-        ChangeLogSet<? extends Entry> cs = null;
+
+        List<Entry> cs = new ArrayList<Entry>();
         if (build instanceof AbstractBuild) {
-            cs = ((AbstractBuild) build).getChangeSet();
+            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
         } else if (build instanceof WorkflowRun) {
             WorkflowRun b = (WorkflowRun) build;
-            cs = b.getChangeSets().get(0);
+            List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
+            for (int i=0; i < lcs.size(); i++) {
+                Object[] lcselem = lcs.get(i).getItems();
+                for (Object elem: lcselem) {
+                    cs.add((Entry) elem);
+                }
+            }
         }
+
         for (Entry change : cs) {
             if (jiraIssue != null && !StringUtils.containsIgnoreCase(change.getMsg(), jiraIssue.id)) {
                 continue;
@@ -292,7 +300,6 @@ class Updater {
             }
         } else if (build instanceof WorkflowRun) {
             ((WorkflowRun)build).getChangeSets().get(0).getBrowser();
-
         }
         return null;
     }
@@ -361,13 +368,20 @@ class Updater {
     static void findIssues(Run<?, ?> build, Set<String> ids, Pattern pattern,
             TaskListener listener) {
 
-        ChangeLogSet<? extends Entry> cs = null;
+        List<Entry> cs = new ArrayList<Entry>();
         if (build instanceof AbstractBuild) {
-            cs = ((AbstractBuild) build).getChangeSet();
+            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
         } else if (build instanceof WorkflowRun) {
             WorkflowRun b = (WorkflowRun) build;
-            cs = b.getChangeSets().get(0);
+            List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
+            for (int i=0; i < lcs.size(); i++) {
+                Object[] lcselem = lcs.get(i).getItems();
+                for (Object elem: lcselem) {
+                    cs.add((Entry) elem);
+                }
+            }
         }
+
         for (Entry change : cs) {
             LOGGER.fine("Looking for JIRA ID in " + change.getMsg());
             Matcher m = pattern.matcher(change.getMsg());

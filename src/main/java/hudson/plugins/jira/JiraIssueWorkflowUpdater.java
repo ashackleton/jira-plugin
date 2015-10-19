@@ -30,7 +30,6 @@ public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildSte
         this.status = status;
     }
 
-
     @Override
     public void perform(Run<?, ?> build, FilePath filePath, Launcher launcher, TaskListener listener)
             throws InterruptedException, IOException {
@@ -41,17 +40,24 @@ public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildSte
         return BuildStepMonitor.BUILD;
     }
 
-    @Extension(optional = true)
+    @Override
+    public DescriptorImpl getDescriptor() {
+        return (DescriptorImpl)super.getDescriptor();
+    }
+
+//    @Extension(optional=true)
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
-        @Override
-        public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-            return true;
+        public DescriptorImpl() {
         }
 
         @Override
         public String getDisplayName() {
-            return "JiraUpdater";
+            return "Jira ticket updater";
+        }
+
+        @Override public boolean isApplicable(Class<? extends AbstractProject> aClass) {
+            return false;
         }
     }
 }

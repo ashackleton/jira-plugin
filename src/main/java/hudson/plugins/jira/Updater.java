@@ -189,15 +189,19 @@ class Updater {
     private static String createComment(Run<?, ?> build,
                                         boolean wikiStyle, String jenkinsRootUrl, boolean recordScmChanges, JiraIssue jiraIssue) {
         if (build instanceof WorkflowRun) {
-            String image;
+            String image = "";
             if ( "RUNNING".equals(JiraIssueWorkflowUpdater.status)) {
                 image = BallColor.GREY_ANIME.getImage();
-            } else {
-                image = BallColor.valueOf(JiraIssueWorkflowUpdater.status).getImage();
+            } else if (Result.SUCCESS.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+                image = "(/)";
+            } else if (Result.FAILURE.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+                image = "(x)";
+            } else if (Result.UNSTABLE.equals(BallColor.valueOf(JiraIssueWorkflowUpdater.status))) {
+                image = "(!)";
             }
             return format(
                     wikiStyle ?
-                            "%6$s: Integrated in !%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
+                            "%6$s: Integrated in %3$s [%2$s|%4$s]\n%5$s" :
                             "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
                     jenkinsRootUrl,
                     build,

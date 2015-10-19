@@ -3,8 +3,8 @@ package hudson.plugins.jira;
 import hudson.Extension;
 import hudson.MarkupText;
 import hudson.Util;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
+import hudson.model.Job;
+import hudson.model.Run;
 import hudson.scm.ChangeLogAnnotator;
 import hudson.scm.ChangeLogSet.Entry;
 import org.apache.commons.lang.StringUtils;
@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,12 +30,18 @@ public class JiraChangeLogAnnotator extends ChangeLogAnnotator {
     private static final Logger LOGGER = Logger.getLogger(JiraChangeLogAnnotator.class.getName());
 
     @Override
-    public void annotate(AbstractBuild<?, ?> build, Entry change, MarkupText text) {
-        JiraSite site = getSiteForProject(build.getProject());
+    public void annotate(Run<?, ?> build, Entry change, MarkupText text) {
+        JiraSite site = getSiteForProject(build.getParent());
         if (site == null) return;    // not configured with JIRA
 
         // if there's any recorded detail information, try to use that, too.
-        JiraBuildAction a = build.getAction(JiraBuildAction.class);
+        JiraBuildAction a = null;
+
+        List<JiraBuildAction> actions = build.getActions(JiraBuildAction.class);
+
+        if (actions.size() > 0) {
+            a = actions.get(0);
+        }
 
         Set<JiraIssue> issuesToBeSaved = new HashSet<JiraIssue>();
 
@@ -58,7 +65,7 @@ public class JiraChangeLogAnnotator extends ChangeLogAnnotator {
                     continue;
                 }
 
-                LOGGER.log(Level.INFO, "Annotating JIRA id: ''{0}''", id);
+                LOGGER.log(Level.CONFIG, "Annotating JIRA id: ''{0}''", id);
 
                 URL url, alternativeUrl;
                 try {
@@ -111,7 +118,7 @@ public class JiraChangeLogAnnotator extends ChangeLogAnnotator {
         }
     }
 
-    private void saveIssues(AbstractBuild<?, ?> build, JiraBuildAction a,
+    private void saveIssues(Run<?, ?> build, JiraBuildAction a,
                             Set<JiraIssue> issuesToBeSaved) {
         if (a != null) {
             a.addIssues(issuesToBeSaved);
@@ -127,7 +134,7 @@ public class JiraChangeLogAnnotator extends ChangeLogAnnotator {
         }
     }
 
-    JiraSite getSiteForProject(AbstractProject<?, ?> project) {
+    JiraSite getSiteForProject(Job<?, ?> project) {
         return JiraSite.get(project);
     }
 }

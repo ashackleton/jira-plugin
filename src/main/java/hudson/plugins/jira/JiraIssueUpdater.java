@@ -9,6 +9,7 @@ import hudson.matrix.MatrixRun;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Run;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
@@ -27,16 +28,6 @@ import java.io.PrintStream;
  */
 public class JiraIssueUpdater extends Recorder implements MatrixAggregatable {
     public JiraIssueUpdater() {
-    }
-
-    @Override
-    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
-        // Don't do anything for individual matrix runs.
-        if (build instanceof MatrixRun) {
-            return true;
-        }
-
-        return Updater.perform(build, listener);
     }
 
     public BuildStepMonitor getRequiredMonitorService() {

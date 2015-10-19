@@ -24,7 +24,7 @@ import java.util.logging.Logger;
  *
  * @author Kohsuke Kawaguchi
  */
-public class JiraProjectProperty extends JobProperty<AbstractProject<?, ?>> {
+public class JiraProjectProperty extends JobProperty<Job<?, ?>> {
 
     /**
      * Used to find {@link JiraSite}. Matches {@link JiraSite#getName()}. Always
@@ -84,7 +84,7 @@ public class JiraProjectProperty extends JobProperty<AbstractProject<?, ?>> {
         @Override
         @SuppressWarnings("unchecked")
         public boolean isApplicable(Class<? extends Job> jobType) {
-            return AbstractProject.class.isAssignableFrom(jobType);
+            return true;
         }
 
         @Override

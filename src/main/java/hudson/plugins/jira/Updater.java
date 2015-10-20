@@ -191,7 +191,7 @@ class Updater {
         if (build instanceof WorkflowRun) {
             String image = "";
             if ( "RUNNING".equals(JiraIssueWorkflowUpdater.status)) {
-                image = BallColor.GREY_ANIME.getImage();
+                image = "(i)";
             } else if ("OK".equals(JiraIssueWorkflowUpdater.status)) {
                 image = "(/)";
             } else if ("KO".equals(JiraIssueWorkflowUpdater.status)) {

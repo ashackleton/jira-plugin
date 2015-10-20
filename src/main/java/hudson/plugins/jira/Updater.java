@@ -201,7 +201,7 @@ class Updater {
             }
             return format(
                     wikiStyle ?
-                            "%6$s: Integrated in %3$s [%2$s|%4$s]\n%5$s" :
+                            "%3$s [%2$s|%4$s]\n%5$s" :
                             "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
                     jenkinsRootUrl,
                     build,
@@ -212,7 +212,7 @@ class Updater {
         } else {
             return format(
                     wikiStyle ?
-                            "%6$s: Integrated in !%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
+                            "!%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
                             "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
                     jenkinsRootUrl,
                     build,

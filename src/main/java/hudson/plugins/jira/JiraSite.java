@@ -11,8 +11,8 @@ import com.google.common.cache.CacheBuilder;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
-import hudson.model.AbstractProject;
 import hudson.model.Descriptor;
+import hudson.model.Job;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import org.joda.time.DateTime;
@@ -327,7 +327,7 @@ public class JiraSite extends AbstractDescribableImpl<JiraSite> {
      * @return null
      *         if no such was found.
      */
-    public static JiraSite get(AbstractProject<?, ?> p) {
+    public static JiraSite get(Job<?, ?> p) {
         JiraProjectProperty jpp = p.getProperty(JiraProjectProperty.class);
         if (jpp != null) {
             JiraSite site = jpp.getSite();

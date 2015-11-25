@@ -1,0 +1,9 @@
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:entry name="status" title="${%status}" field="status" default="OK">
+         <select name="status">
+                <option value="OK">SUCESS</option>
+                <option value="KO">FAILURE</option>
+                <option value="RUNNING">RUNNING</option>
+            </select>
+    </f:entry>
+</j:jelly>

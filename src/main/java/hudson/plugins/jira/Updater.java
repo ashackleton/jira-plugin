@@ -5,11 +5,12 @@ import hudson.Util;
 import hudson.model.*;
 import hudson.model.AbstractBuild.DependencyChange;
 import hudson.plugins.jira.listissuesparameter.JiraIssueParameterValue;
+import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.AffectedFile;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.scm.RepositoryBrowser;
 import org.apache.commons.lang.StringUtils;
-
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
@@ -18,6 +19,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -31,12 +33,12 @@ import static java.lang.String.format;
  * @author Kohsuke Kawaguchi
  */
 class Updater {
-    static boolean perform(AbstractBuild<?, ?> build, BuildListener listener, UpdaterIssueSelector selector) {
+    static boolean perform(Run<?, ?> build, TaskListener listener) {
         PrintStream logger = listener.getLogger();
         List<JiraIssue> issues = null;
 
         try {
-            JiraSite site = JiraSite.get(build.getProject());
+            JiraSite site = JiraSite.get(build.getParent());
             if (site == null) {
                 logger.println(Messages.Updater_NoJiraSite());
                 build.setResult(Result.FAILURE);
@@ -72,7 +74,7 @@ class Updater {
             }
 
             boolean doUpdate = false;
-            if (site.updateJiraIssueForAllStatus) {
+            if ((site.updateJiraIssueForAllStatus) || (build.getResult() == null)) {
                 doUpdate = true;
             } else {
                 doUpdate = build.getResult().isBetterOrEqualTo(Result.UNSTABLE);
@@ -115,7 +117,7 @@ class Updater {
      * @throws RestClientException
      */
     static void submitComments(
-            AbstractBuild<?, ?> build, PrintStream logger, String jenkinsRootUrl,
+            Run<?, ?> build, PrintStream logger, String jenkinsRootUrl,
             List<JiraIssue> issues, JiraSession session,
             boolean useWikiStyleComments, boolean recordScmChanges, String groupVisibility, String roleVisibility) throws RestClientException {
 
@@ -184,25 +186,63 @@ class Updater {
      *  [https://bitbucket.org/user/repo/changeset/9af8e4c4c909/])\r
      * </pre>
      */
-    private static String createComment(AbstractBuild<?, ?> build,
+    private static String createComment(Run<?, ?> build,
                                         boolean wikiStyle, String jenkinsRootUrl, boolean recordScmChanges, JiraIssue jiraIssue) {
-        return format(
-                wikiStyle ?
-                        "%6$s: Integrated in !%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
-                        "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
-                jenkinsRootUrl,
-                build,
-                build.getResult().color.getImage(),
-                Util.encode(jenkinsRootUrl + build.getUrl()),
-                getScmComments(wikiStyle, build, recordScmChanges, jiraIssue),
-                build.getResult().toString());
+        if (build instanceof WorkflowRun) {
+            String image = "";
+            if ( "RUNNING".equals(JiraIssueWorkflowUpdater.status)) {
+                image = "(i)";
+            } else if ("OK".equals(JiraIssueWorkflowUpdater.status)) {
+                image = "(/)";
+            } else if ("KO".equals(JiraIssueWorkflowUpdater.status)) {
+                image = "(x)";
+            } else {
+                image = "(!)";
+            }
+            return format(
+                    wikiStyle ?
+                            "%3$s [%2$s|%4$s]\n%5$s" :
+                            "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
+                    jenkinsRootUrl,
+                    build,
+                    image,
+                    Util.encode(jenkinsRootUrl + build.getUrl()),
+                    getScmComments(wikiStyle, build, recordScmChanges, jiraIssue),
+                    JiraIssueWorkflowUpdater.status);
+        } else {
+            return format(
+                    wikiStyle ?
+                            "!%1$simages/16x16/%3$s! [%2$s|%4$s]\n%5$s" :
+                            "%6$s: Integrated in Jenkins build %2$s (See [%4$s])\n%5$s",
+                    jenkinsRootUrl,
+                    build,
+                    build.getResult().color.getImage(),
+                    Util.encode(jenkinsRootUrl + build.getUrl()),
+                    getScmComments(wikiStyle, build, recordScmChanges, jiraIssue),
+                    build.getResult().toString());
+        }
     }
 
     private static String getScmComments(boolean wikiStyle,
-                                         AbstractBuild<?, ?> build, boolean recordScmChanges, JiraIssue jiraIssue) {
+                                         Run build, boolean recordScmChanges, JiraIssue jiraIssue) {
         StringBuilder comment = new StringBuilder();
         RepositoryBrowser repoBrowser = getRepositoryBrowser(build);
-        for (Entry change : build.getChangeSet()) {
+
+        List<Entry> cs = new ArrayList<Entry>();
+        if (build instanceof AbstractBuild) {
+            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
+        } else if (build instanceof WorkflowRun) {
+            WorkflowRun b = (WorkflowRun) build;
+            List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
+            for (int i=0; i < lcs.size(); i++) {
+                Object[] lcselem = lcs.get(i).getItems();
+                for (Object elem: lcselem) {
+                    cs.add((Entry) elem);
+                }
+            }
+        }
+
+        for (Entry change : cs) {
             if (jiraIssue != null && !StringUtils.containsIgnoreCase(change.getMsg(), jiraIssue.id)) {
                 continue;
             }
@@ -253,9 +293,13 @@ class Updater {
         return comment.toString();
     }
 
-    private static RepositoryBrowser<?> getRepositoryBrowser(AbstractBuild<?, ?> build) {
-        if (build.getProject().getScm() != null) {
-            return build.getProject().getScm().getEffectiveBrowser();
+    private static RepositoryBrowser<?> getRepositoryBrowser(Run<?, ?> build) {
+        if (build instanceof AbstractBuild) {
+            if (((AbstractBuild)build).getProject().getScm() != null) {
+                return ((AbstractBuild)build).getProject().getScm().getEffectiveBrowser();
+            }
+        } else if (build instanceof WorkflowRun) {
+            ((WorkflowRun)build).getChangeSets().get(0).getBrowser();
         }
         return null;
     }
@@ -289,8 +333,8 @@ class Updater {
      * {@link JiraSite#existsIssue(String)} here so that new projects
      * in JIRA can be detected.
      */
-    static Set<String> findIssueIdsRecursive(AbstractBuild<?, ?> build, Pattern pattern,
-                                                     TaskListener listener) {
+    private static Set<String> findIssueIdsRecursive(Run<?, ?> build, Pattern pattern,
+            TaskListener listener) {
         Set<String> ids = new HashSet<String>();
 
         // first, issues that were carried forward.
@@ -306,9 +350,13 @@ class Updater {
         findIssues(build, ids, pattern, listener);
 
         // check for issues fixed in dependencies
-        for (DependencyChange depc : build.getDependencyChanges(build.getPreviousBuild()).values()) {
-            for (AbstractBuild<?, ?> b : depc.getBuilds()) {
-                findIssues(b, ids, pattern, listener);
+        if (build instanceof AbstractBuild) {
+        AbstractBuild ab = (AbstractBuild) build;
+            Map <AbstractProject, AbstractBuild.DependencyChange> dc = ab.getDependencyChanges(ab.getPreviousBuild());
+            for (DependencyChange depc :  dc.values()) {
+                for (AbstractBuild<?, ?> b : depc.getBuilds()) {
+                    findIssues(b, ids, pattern, listener);
+                }
             }
         }
         return ids;
@@ -317,9 +365,24 @@ class Updater {
     /**
      * @param pattern pattern to use to match issue ids
      */
-    static void findIssues(AbstractBuild<?, ?> build, Set<String> ids, Pattern pattern,
-                           TaskListener listener) {
-        for (Entry change : build.getChangeSet()) {
+    static void findIssues(Run<?, ?> build, Set<String> ids, Pattern pattern,
+            TaskListener listener) {
+
+        List<Entry> cs = new ArrayList<Entry>();
+        if (build instanceof AbstractBuild) {
+            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
+        } else if (build instanceof WorkflowRun) {
+            WorkflowRun b = (WorkflowRun) build;
+            List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
+            for (int i=0; i < lcs.size(); i++) {
+                Object[] lcselem = lcs.get(i).getItems();
+                for (Object elem: lcselem) {
+                    cs.add((Entry) elem);
+                }
+            }
+        }
+
+        for (Entry change : cs) {
             LOGGER.fine("Looking for JIRA ID in " + change.getMsg());
             Matcher m = pattern.matcher(change.getMsg());
 
@@ -336,12 +399,16 @@ class Updater {
 
         // Now look for any JiraIssueParameterValue's set in the build
         // Implements JENKINS-12312
-        ParametersAction parameters = build.getAction(ParametersAction.class);
+        List<ParametersAction> actions = build.getActions(ParametersAction.class);
 
-        if (parameters != null) {
-            for (ParameterValue val : parameters.getParameters()) {
-                if (val instanceof JiraIssueParameterValue) {
-                    ids.add(((JiraIssueParameterValue) val).getValue());
+        if (actions.size() > 0) {
+            ParametersAction parameters = actions.get(0);
+
+            if (parameters != null) {
+                for (ParameterValue val : parameters.getParameters()) {
+                    if (val instanceof JiraIssueParameterValue) {
+                        ids.add(((JiraIssueParameterValue) val).getIssue());
+                    }
                 }
             }
         }
@@ -352,5 +419,5 @@ class Updater {
     /**
      * Debug flag.
      */
-    public static boolean debug = false;
+    public static boolean debug = true;
 }

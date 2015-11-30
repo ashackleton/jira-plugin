@@ -33,7 +33,7 @@ import static java.lang.String.format;
  * @author Kohsuke Kawaguchi
  */
 class Updater {
-    static boolean perform(Run<?, ?> build, TaskListener listener) {
+    static boolean perform(Run<?, ?> build, TaskListener listener, UpdaterIssueSelector selector) {
         PrintStream logger = listener.getLogger();
         List<JiraIssue> issues = null;
 
@@ -228,16 +228,16 @@ class Updater {
         StringBuilder comment = new StringBuilder();
         RepositoryBrowser repoBrowser = getRepositoryBrowser(build);
 
-        List<Entry> cs = new ArrayList<Entry>();
+        Iterable<Entry> cs = new ArrayList<Entry>();
         if (build instanceof AbstractBuild) {
-            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
+            cs = ((AbstractBuild) build).getChangeSet();
         } else if (build instanceof WorkflowRun) {
             WorkflowRun b = (WorkflowRun) build;
             List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
             for (int i=0; i < lcs.size(); i++) {
                 Object[] lcselem = lcs.get(i).getItems();
                 for (Object elem: lcselem) {
-                    cs.add((Entry) elem);
+                    ((List<Entry>) cs).add((Entry) elem);
                 }
             }
         }
@@ -333,7 +333,7 @@ class Updater {
      * {@link JiraSite#existsIssue(String)} here so that new projects
      * in JIRA can be detected.
      */
-    private static Set<String> findIssueIdsRecursive(Run<?, ?> build, Pattern pattern,
+    static Set<String> findIssueIdsRecursive(Run<?, ?> build, Pattern pattern,
             TaskListener listener) {
         Set<String> ids = new HashSet<String>();
 
@@ -368,16 +368,16 @@ class Updater {
     static void findIssues(Run<?, ?> build, Set<String> ids, Pattern pattern,
             TaskListener listener) {
 
-        List<Entry> cs = new ArrayList<Entry>();
+        Iterable<Entry> cs = new ArrayList<Entry>();
         if (build instanceof AbstractBuild) {
-            cs = (List<Entry>) ((AbstractBuild) build).getChangeSet();
+            cs = ((AbstractBuild) build).getChangeSet();
         } else if (build instanceof WorkflowRun) {
             WorkflowRun b = (WorkflowRun) build;
             List<ChangeLogSet<? extends Entry>> lcs = b.getChangeSets();
             for (int i=0; i < lcs.size(); i++) {
                 Object[] lcselem = lcs.get(i).getItems();
                 for (Object elem: lcselem) {
-                    cs.add((Entry) elem);
+                    ((List<Entry>) cs).add((Entry) elem);
                 }
             }
         }
@@ -407,7 +407,7 @@ class Updater {
             if (parameters != null) {
                 for (ParameterValue val : parameters.getParameters()) {
                     if (val instanceof JiraIssueParameterValue) {
-                        ids.add(((JiraIssueParameterValue) val).getIssue());
+                        ids.add(((JiraIssueParameterValue) val).getValue());
                     }
                 }
             }

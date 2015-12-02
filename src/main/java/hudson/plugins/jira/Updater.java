@@ -64,7 +64,7 @@ class Updater {
             try {
                 session = site.getSession();
             } catch (IOException e) {
-                listener.getLogger().println(Messages.Updater_FailedToConnect());
+                logger.println(Messages.Updater_FailedToConnect());
                 e.printStackTrace(listener.getLogger());
             }
             if (session == null) {
@@ -82,7 +82,8 @@ class Updater {
             boolean useWikiStyleComments = site.supportsWikiStyleComment;
 
             issues = getJiraIssues(ids, session, logger);
-            build.getActions().add(new JiraBuildAction(build, issues));
+
+						build.getActions().add(new JiraBuildAction(build, issues));
 
             if (doUpdate) {
                 submitComments(build, logger, rootUrl, issues,

@@ -4,7 +4,9 @@ import hudson.EnvVars;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
+import hudson.model.TaskListener;
+import hudson.model.Job;
+import hudson.model.Run;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,6 +18,7 @@ import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import jenkins.tasks.SimpleBuildWrapper;
 
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
@@ -35,15 +38,15 @@ public class JiraCreateReleaseNotesTest {
     private static final String JIRA_OTHER_FILTER = "status in (Resolved, Done, Closed)";
 
     @Mock
-    AbstractBuild build;
+    Run build;
     @Mock
     Launcher launcher;
     @Mock
-    BuildListener buildListener;
+    TaskListener taskListener;
     @Mock
     EnvVars env;
     @Mock
-    AbstractProject project;
+    Job project;
     @Mock
     JiraSite site;
     @Mock
@@ -51,9 +54,9 @@ public class JiraCreateReleaseNotesTest {
 
     @Before
     public void createCommonMocks() throws IOException, InterruptedException {
-        when(build.getProject()).thenReturn(project);
-        when(build.getEnvironment(buildListener)).thenReturn(env);
-        when(buildListener.fatalError(Mockito.anyString(), Mockito.anyVararg())).thenReturn(printWriter);
+        when(build.getParent()).thenReturn(project);
+        when(build.getEnvironment(taskListener)).thenReturn(env);
+        when(taskListener.fatalError(Mockito.anyString(), Mockito.anyVararg())).thenReturn(printWriter);
         when(build.getResult()).thenCallRealMethod();
 
         when(env.expand(Mockito.anyString())).thenAnswer(new Answer<String>() {
@@ -82,8 +85,9 @@ public class JiraCreateReleaseNotesTest {
     @Test
     public void jiraApiCallDefaultFilter() throws InterruptedException, IOException {
         JiraCreateReleaseNotes jcrn = spy(new JiraCreateReleaseNotes(JIRA_PRJ,JIRA_RELEASE,JIRA_VARIABLE));
-        doReturn(site).when(jcrn).getSiteForProject((AbstractProject<?, ?>) Mockito.any());
-        jcrn.setUp(build, launcher, buildListener);
+        doReturn(site).when(jcrn).getSiteForProject((Job<?, ?>) Mockito.any());
+        SimpleBuildWrapper.Context c = new SimpleBuildWrapper.Context();
+        jcrn.setUp(c, build, null, launcher, taskListener, null);
         verify(site).getReleaseNotesForFixVersion(JIRA_PRJ, JIRA_RELEASE, JiraCreateReleaseNotes.DEFAULT_FILTER);
     }
 
@@ -91,7 +95,8 @@ public class JiraCreateReleaseNotesTest {
     public void jiraApiCallOtherFilter() throws InterruptedException, IOException {
         JiraCreateReleaseNotes jcrn = spy(new JiraCreateReleaseNotes(JIRA_PRJ,JIRA_RELEASE,JIRA_VARIABLE, JIRA_OTHER_FILTER));
         doReturn(site).when(jcrn).getSiteForProject((AbstractProject<?, ?>) Mockito.any());
-        jcrn.setUp(build, launcher, buildListener);
+        SimpleBuildWrapper.Context c = new SimpleBuildWrapper.Context();
+        jcrn.setUp(c, build, null, launcher, taskListener, null);
         verify(site).getReleaseNotesForFixVersion(JIRA_PRJ, JIRA_RELEASE, JIRA_OTHER_FILTER);
     }
 
@@ -99,6 +104,7 @@ public class JiraCreateReleaseNotesTest {
     public void failBuildOnError() throws InterruptedException, IOException {
         JiraCreateReleaseNotes jcrn = spy(new JiraCreateReleaseNotes("",JIRA_RELEASE,JIRA_VARIABLE, JIRA_OTHER_FILTER));
         doReturn(site).when(jcrn).getSiteForProject((AbstractProject<?, ?>) Mockito.any());
-        jcrn.setUp(build, launcher, buildListener);
+        SimpleBuildWrapper.Context c = new SimpleBuildWrapper.Context();
+        jcrn.setUp(c, build, null, launcher, taskListener, null);
     }
 }

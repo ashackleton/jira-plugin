@@ -474,6 +474,16 @@ public class JiraSite extends AbstractDescribableImpl<JiraSite> {
 
         List<Issue> issues = session.getIssuesWithFixVersion(projectKey, versionName, filter);
         List<IssueType> types = session.getIssueTypes();
+        Version version = session.getVersionByName(projectKey, versionName);
+
+        if (version == null) {
+            return "";
+        }
+
+				DateTime dt = version.getReleaseDate();
+				String versionDate = dt.toString("yyyy-MM-dd");
+				String versionDesc = version.getDescription();
+				String notesHeader = String.format("%s - %s %s", versionName, versionDate, versionDesc);
 
         HashMap<Long, String> typeNameMap = new HashMap<Long, String>();
 
@@ -507,12 +517,15 @@ public class JiraSite extends AbstractDescribableImpl<JiraSite> {
                 issueSet = releaseNotes.get(type);
             }
 
-            issueSet.add(String.format(" - [%s] %s (%s)", key, summary, status));
+            issueSet.add(String.format("    %s    %s (%s)", key, summary, status));
         }
 
         StringBuilder sb = new StringBuilder();
+        sb.append(notesHeader);
+        sb.append("\n");
         for (String type : releaseNotes.keySet()) {
-            sb.append(String.format("# %s\n", type));
+        	  // Removing type notes, however, this should be a parameter
+            // sb.append(String.format("# %s\n", type));
             for (String issue : releaseNotes.get(type)) {
                 sb.append(issue);
                 sb.append("\n");

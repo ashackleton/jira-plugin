@@ -1,11 +1,17 @@
 package hudson.plugins.jira;
 
+import hudson.AbortException;
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Job;
 import hudson.model.Result;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrapperDescriptor;
@@ -14,11 +20,12 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import jenkins.tasks.SimpleBuildWrapper;
 
 import static org.apache.commons.lang.StringUtils.defaultIfEmpty;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 
-public class JiraCreateReleaseNotes extends BuildWrapper {
+public class JiraCreateReleaseNotes extends SimpleBuildWrapper {
 
     @Extension
     public final static class Descriptor extends BuildWrapperDescriptor {
@@ -98,15 +105,20 @@ public class JiraCreateReleaseNotes extends BuildWrapper {
     }
 
 
-    JiraSite getSiteForProject(AbstractProject<?, ?> project) {
+    JiraSite getSiteForProject(Job<?, ?> project) {
         return JiraSite.get(project);
     }
 
     @Override
-    public Environment setUp(final AbstractBuild build, final Launcher launcher, final BuildListener listener)
+    public void setUp(final Context context, 
+    		              final Run<?, ?> build, 
+    		              final FilePath workspace, 
+    		              final Launcher launcher, 
+    		              final TaskListener listener, 
+    		              final EnvVars initialEnvironment)
             throws IOException, InterruptedException {
 
-        final JiraSite site = getSiteForProject(build.getProject());
+        final JiraSite site = getSiteForProject(build.getParent());
 
         String realRelease = null;
         String realProjectKey = null;
@@ -137,18 +149,8 @@ public class JiraCreateReleaseNotes extends BuildWrapper {
                     realProjectKey,
                     e
             ));
-            listener.finished(Result.FAILURE);
-            return new Environment() {};
         }
 
-        final Map<String, String> envMap = new HashMap<String, String>();
-        envMap.put(jiraEnvironmentVariable, releaseNotes);
-
-        return new Environment() {
-            @Override
-            public void buildEnvVars(final Map<String, String> env) {
-                env.putAll(envMap);
-            }
-        };
+        context.env(jiraEnvironmentVariable, releaseNotes);
     }
 }

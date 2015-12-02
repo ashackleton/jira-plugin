@@ -213,7 +213,7 @@ public class JiraSession {
                 }
             }
 
-            LOGGER.fine("Replaceing version in issue: " + issue.getKey());
+            LOGGER.fine("Replacing version in issue: " + issue.getKey());
             service.updateIssue(issue.getKey(), Lists.newArrayList(newVersions));
         }
     }

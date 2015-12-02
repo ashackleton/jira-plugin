@@ -24,6 +24,7 @@ import jenkins.tasks.SimpleBuildStep;
  */
 public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildStep {
     public static String status;
+    private UpdaterIssueSelector issueSelector;
 
     @DataBoundConstructor
     public JiraIssueWorkflowUpdater(String status) {
@@ -33,7 +34,7 @@ public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildSte
     @Override
     public void perform(Run<?, ?> build, FilePath filePath, Launcher launcher, TaskListener listener)
             throws InterruptedException, IOException {
-        Updater.perform(build, listener);
+        Updater.perform(build, listener, getIssueSelector());
     }
 
     public BuildStepMonitor getRequiredMonitorService() {
@@ -42,22 +43,26 @@ public class JiraIssueWorkflowUpdater extends Recorder implements SimpleBuildSte
 
     @Override
     public DescriptorImpl getDescriptor() {
-        return (DescriptorImpl)super.getDescriptor();
+        return DESCRIPTOR;
     }
 
-//    @Extension(optional=true)
+    public UpdaterIssueSelector getIssueSelector() {
+        UpdaterIssueSelector uis = this.issueSelector;
+        if (uis == null) uis = new DefaultUpdaterIssueSelector();
+        return (this.issueSelector = uis);
+    }
+
+    @Extension
+    public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
+
+    @Extension
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
-
-        public DescriptorImpl() {
-        }
-
-        @Override
         public String getDisplayName() {
             return "Jira ticket updater";
         }
 
-        @Override public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            return false;
+        public boolean isApplicable(Class<? extends AbstractProject> aClass) {
+            return true;
         }
     }
 }
